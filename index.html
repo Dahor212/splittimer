@@ -154,6 +154,7 @@
       </section>
     </main>
 
+    
     <!-- RIDE -->
     <main class="screen" id="screenRide" data-screen="ride" hidden>
       <section class="pad">
@@ -165,22 +166,78 @@
           <div class="card-title" id="rideRouteName">Jízda</div>
           <div class="pill" id="rideNextLabel">Další: —</div>
         </div>
+        <div class="hint" id="rideHint">Stiskni „Další checkpoint“ při průjezdu bodem.</div>
+      </section>
 
+      <!-- TV COMPARE -->
+      <section class="pad">
+        <div class="card pad" id="compareCard">
+          <div class="row between">
+            <div class="card-title">Srovnání (TV režim)</div>
+            <div class="pill" id="compareMode">—</div>
+          </div>
+
+          <div class="compare-grid">
+            <div class="compare-box">
+              <div class="compare-kicker" id="cmpNextTitle">Další checkpoint</div>
+              <div class="compare-row"><span class="muted">Best</span><b id="cmpNextBest">—</b></div>
+              <div class="compare-row"><span class="muted">TV cíl</span><b id="cmpNextTarget">—</b></div>
+            </div>
+            <div class="compare-box">
+              <div class="compare-kicker">Cíl</div>
+              <div class="compare-row"><span class="muted">Best</span><b id="cmpFinishBest">—</b></div>
+              <div class="compare-row"><span class="muted">TV cíl</span><b id="cmpFinishTarget">—</b></div>
+            </div>
+          </div>
+
+          <div class="hint subtle" id="cmpHint">Ukazuje rozdíl na nejlepší časy a zároveň „živý“ cíl (další záznam v žebříčku, který ještě stíháš porazit).</div>
+        </div>
+      </section>
+
+      <!-- DUEL -->
+      <section class="pad">
+        <div class="card pad" id="raceTrackCard">
+          <div class="row between">
+            <div class="card-title">Duel (TV vizualizace)</div>
+            <div class="pill" id="duelLabel">Best vs Ty</div>
+          </div>
+
+          <div class="duel-track" id="track">
+            <div class="duel-bg"></div>
+            <div class="duel-line"></div>
+            <div class="duel-marks" id="trackMarks"></div>
+
+            <div class="duel-rider duel-best" id="riderBest" aria-label="Best">
+              <div class="dot"></div>
+              <div class="tag" id="tagBest">BEST</div>
+            </div>
+
+            <div class="duel-rider duel-you" id="riderYou" aria-label="Ty">
+              <div class="dot"></div>
+              <div class="tag" id="tagYou">TY</div>
+            </div>
+          </div>
+
+          <div class="duel-actions">
+            <button class="btn-secondary" id="btnCancelRide">Zrušit jízdu</button>
+            <button class="btn-primary" id="btnNextCheckpoint">Další checkpoint</button>
+          </div>
+
+          <div class="hint subtle" id="duelHint">V prvním úseku jedete spolu. Po každém checkpointu se pozice „skokově“ přepočítají podle rozdílu celkového času (mezera roste po 5 s).</div>
+        </div>
+      </section>
+
+      <!-- RECENT SPLITS -->
+      <section class="card pad" id="rideSplitsCard">
+        <div class="row between">
+          <div class="card-title">Checkpointy</div>
+          <div class="pill" id="rideSplitsPill">—</div>
+        </div>
         <div class="ride-marks" id="rideMarks"></div>
-      </section>
-
-      <section class="pad grid2">
-        <button class="orange" id="btnUndo">Zpět</button>
-        <button class="green" id="btnNextCheckpoint">Další Checkpoint</button>
-      </section>
-
-      <section class="pad grid2">
-        <button class="red" id="btnStopRide">Ukončit</button>
-        <button class="blue" id="btnSaveRide" disabled>Uložit Výsledek</button>
       </section>
     </main>
 
-    <!-- BOTTOM SHEETS / MODALS -->
+<!-- BOTTOM SHEETS / MODALS -->
 
     <div class="modal" id="modalSegmentLeaderboard" hidden>
       <div class="sheet large">

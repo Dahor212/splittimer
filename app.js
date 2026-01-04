@@ -515,6 +515,17 @@ function pickTvTarget(sortedTimes, currentElapsed){
   return {rank: sortedTimes.length, t: last.t, dateIso: last.dateIso, behindLast:true};
 }
 
+
+$('#btnCancelRide')?.addEventListener('click', ()=>{
+  if (!state.ride) return;
+  const ok = confirm('Zrušit jízdu bez uložení?');
+  if (!ok) return;
+  stopTicker();
+  state.ride = null;
+  showToast('Jízda zrušena.', 1800);
+  showScreen('routeDetail');
+});
+
 // ---------- Ride logic ----------
 let raf = null;
 
@@ -625,7 +636,14 @@ function renderRide(){
     const km = Number.isFinite(cp.distanceKm) ? cp.distanceKm : null;
     const kmTxt = km!=null ? ` • ${String(km).replace('.',',')} km` : '';
     $('#rideNextLabel').textContent = `Další: ${cp.name}${kmTxt}`;
-    $('#btnNextCheckpoint').textContent = km!=null ? `Další checkpoint (${String(km).replace('.',',')} km)` : 'Další checkpoint';
+    const isFinish = (nextIdx >= route.checkpoints.length-1) || ((cp.name||'').toLowerCase().includes('cíl'));
+    const btn = $('#btnNextCheckpoint');
+    if (btn){
+      btn.textContent = isFinish
+        ? `CÍL – Ukončit${km!=null ? ` (${String(km).replace('.',',')} km)` : ''}`
+        : (km!=null ? `Další checkpoint (${String(km).replace('.',',')} km)` : 'Další checkpoint');
+      btn.dataset.isFinish = isFinish ? '1' : '0';
+    }
   } else {
     const km = Number.isFinite(route.totalDistanceKm) ? route.totalDistanceKm : null;
     const kmTxt = km!=null ? ` • ${String(km).replace('.',',')} km` : '';
@@ -713,14 +731,24 @@ function renderRide(){
   $('#btnUndo').disabled = !state.ride.marks.length;
 }
 
-$('#btnNextCheckpoint').addEventListener('click', rideNextCheckpoint);
-$('#btnUndo').addEventListener('click', rideUndo);
-$('#btnStopRide').addEventListener('click', ()=>{
+$('#btnNextCheckpoint')?.addEventListener('click', ()=>{
+  const btn = $('#btnNextCheckpoint');
+  const isFinish = btn && btn.dataset && btn.dataset.isFinish==='1';
+  if (isFinish){
+    stopRide();
+    renderRide();
+    openSaveRide();
+    return;
+  }
+  rideNextCheckpoint();
+});
+$('#btnUndo')?.addEventListener('click', rideUndo);
+$('#btnStopRide')?.addEventListener('click', ()=>{
   stopRide();
   renderRide();
   openSaveRide();
 });
-$('#btnSaveRide').addEventListener('click', openSaveRide);
+$('#btnSaveRide')?.addEventListener('click', openSaveRide);
 
 function openSaveRide(){
   if (!state.ride) return;
@@ -947,7 +975,7 @@ function renderTrackMarks(route){
   const fr = getCheckpointFractions(route);
   fr.forEach((f, i)=>{
     const div = document.createElement('div');
-    div.className = 'track-mark';
+    div.className = 'duel-mark';
     div.style.left = `${f*100}%`;
     const lbl = document.createElement('div');
     lbl.className = 'lbl';
