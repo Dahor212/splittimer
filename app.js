@@ -497,7 +497,8 @@ function startRide(routeId){
     running: true,
     marks: [], // {checkpointId, elapsedMs}
     stoppedMs: null,
-    lastRankCp: null
+    lastRankCp: null,
+    visual: { segIdx: 0, segStartMs: 0, offsetPx: 0 }
   };
   $('#btnSaveRide').disabled = true;
   try{ const r=getCurrentRoute(); if(r) resetDuelForRide(r);}catch(e){}
@@ -541,11 +542,6 @@ function stopRide(){
       const dBest = deltaToBest(finLb, total);
       const deltaTxt = (dBest==null) ? '—' : (dBest<=0 ? `-${formatTimeShort(Math.abs(dBest))} před #1` : `+${formatTimeShort(dBest)} za #1`);
       showToast(`Cíl: <b>${formatTimeShort(total)}</b><small>Umístění v cíli: #${rankInfo.pos}/${rankInfo.total} • ${deltaTxt}</small>`, 3200);
-      try{
-        const endPx = pxWithinTrack(1);
-        setRiderLeft('riderBest', endPx);
-        setRiderLeft('riderYou', endPx + (state.ride.visual.offsetPx||0));
-      }catch(e){}
     }
   }catch(e){}
 }
@@ -663,6 +659,9 @@ function renderRide(){
   }catch(e){
     // ignore
   }
+
+    // Duel track update
+  try{ updateDuelPositions(route); }catch(e){}
 
   // Button enable states
   $('#btnNextCheckpoint').disabled = !state.ride.running || (state.ride.marks.length >= route.checkpoints.length);
@@ -880,13 +879,14 @@ $('#btnReset').addEventListener('click', ()=>{
 // ---------- Duel track helpers ----------
 function getCheckpointFractions(route){
   const cps = route.checkpoints || [];
+  // If checkpoints include distanceKm, use it; else equally spaced.
   const dists = cps.map(c=>Number.isFinite(c.distanceKm)?c.distanceKm:null);
   const have = dists.some(v=>v!=null);
   if (have){
     const max = Math.max(...dists.filter(v=>v!=null));
     const end = Number.isFinite(route.totalDistanceKm) ? route.totalDistanceKm : max;
-    const denom = (end && end>0) ? end : max || 1;
-    return cps.map((c, i)=>{
+    const denom = (end && end>0) ? end : (max || 1);
+    return cps.map((c,i)=>{
       const v = Number.isFinite(c.distanceKm) ? c.distanceKm/denom : (i/(Math.max(1,cps.length-1)));
       return Math.min(1, Math.max(0, v));
     });
@@ -906,8 +906,7 @@ function renderTrackMarks(route){
     div.style.left = `${f*100}%`;
     const lbl = document.createElement('div');
     lbl.className = 'lbl';
-    const short = (i===0) ? 'START' : (i===fr.length-1 ? 'CÍL' : `CP${i+1}`);
-    lbl.textContent = short;
+    lbl.textContent = (i===0) ? 'START' : (i===fr.length-1 ? 'CÍL' : `CP${i+1}`);
     div.appendChild(lbl);
     marks.appendChild(div);
   });
@@ -950,9 +949,33 @@ function pxWithinTrack(fraction){
 function setRiderLeft(id, px){
   const el = $('#'+id);
   const track = $('#track');
-  if (!el || !track) return;
+  if (!el || !track || !track.clientWidth) return;
   const left = (px / track.clientWidth) * 100;
   el.style.left = `${left}%`;
+}
+
+function resetDuelForRide(route){
+  if (!state.ride) return;
+  state.ride.visual = { segIdx: 0, segStartMs: 0, offsetPx: 0 };
+  renderTrackMarks(route);
+  const p0 = pxWithinTrack(0);
+  setRiderLeft('riderBest', p0);
+  setRiderLeft('riderYou', p0);
+}
+
+function updateOffsetOnCheckpoint(route, checkpointIdx, elapsedAtCp){
+  const bestTimes = getBestCumulativeTimes(route);
+  const bestAt = bestTimes[checkpointIdx] ?? null;
+  if (bestAt == null) return;
+
+  const delta = elapsedAtCp - bestAt; // + behind
+  const steps = Math.floor(Math.abs(delta) / 5000); // 5s steps
+  const dir = delta > 0 ? -1 : +1; // behind -> back
+  const stepPx = 10;
+  state.ride.visual.offsetPx = dir * steps * stepPx;
+
+  state.ride.visual.segIdx = checkpointIdx;
+  state.ride.visual.segStartMs = elapsedAtCp;
 }
 
 function updateDuelPositions(route){
@@ -962,7 +985,7 @@ function updateDuelPositions(route){
   if (!fr.length) return;
 
   const bestTimes = getBestCumulativeTimes(route);
-  const segIdx = Math.min(ride.visual.segIdx, fr.length-1);
+  const segIdx = Math.min(ride.visual?.segIdx ?? 0, fr.length-1);
   const segStartF = fr[segIdx] ?? 0;
   const segEndF = fr[Math.min(segIdx+1, fr.length-1)] ?? 1;
 
@@ -971,41 +994,16 @@ function updateDuelPositions(route){
   const segDur = Math.max(15000, (tEnd - tStart) || 60000);
 
   const elapsedNow = ride.running ? (nowMs() - ride.startMs) : (ride.stoppedMs ?? 0);
-  const segElapsed = Math.max(0, elapsedNow - ride.visual.segStartMs);
+  const segElapsed = Math.max(0, elapsedNow - (ride.visual?.segStartMs ?? 0));
   const p = Math.min(1, segElapsed / segDur);
 
   const baseF = segStartF + (segEndF - segStartF) * p;
   const basePx = pxWithinTrack(baseF);
 
-  const bestPx = basePx;
-  const youPx = basePx + (ride.visual.offsetPx || 0);
-
-  setRiderLeft('riderBest', bestPx);
-  setRiderLeft('riderYou', youPx);
+  setRiderLeft('riderBest', basePx);
+  setRiderLeft('riderYou', basePx + (ride.visual?.offsetPx ?? 0));
 }
 
-function resetDuelForRide(route){
-  if (!state.ride) return;
-  state.ride.visual = { segIdx: 0, segStartMs: 0, offsetPx: 0 };
-  renderTrackMarks(route);
-  setRiderLeft('riderBest', pxWithinTrack(0));
-  setRiderLeft('riderYou', pxWithinTrack(0));
-}
-
-function updateOffsetOnCheckpoint(route, checkpointIdx, elapsedAtCp){
-  const bestTimes = getBestCumulativeTimes(route);
-  const bestAt = bestTimes[checkpointIdx] ?? null;
-  if (bestAt == null) return;
-
-  const delta = elapsedAtCp - bestAt; // + behind
-  const steps = Math.floor(Math.abs(delta) / 5000);
-  const dir = delta > 0 ? -1 : +1;
-  const stepPx = 10;
-  state.ride.visual.offsetPx = dir * steps * stepPx;
-
-  state.ride.visual.segIdx = checkpointIdx;
-  state.ride.visual.segStartMs = elapsedAtCp;
-}
 
 // ---------- Profile drawing ----------
 function drawProfile(route){
