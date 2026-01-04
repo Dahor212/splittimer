@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0b3a67" />
+  <title>SplitTimer</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <button class="icon-btn" id="btnBack" aria-label="Zpět" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 5 9 12l6.5 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="title" id="topTitle">Moje Trasy</div>
+      <div class="right">
+        <button class="icon-btn" id="btnMenu" aria-label="Menu">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+    </header>
+
+
+    <!-- SOURCE PICKER -->
+    <main class="screen" id="screenSource" data-screen="source" hidden>
+      <section class="pad">
+        <div class="card pad">
+          <div class="card-title">Vyber zdroj tras</div>
+          <div class="hint">Trasy a žebříčky budou oddělené pro Zwift a Kinomap.</div>
+        </div>
+      </section>
+      <section class="pad grid2">
+        <button class="primary" id="btnPickZwift">Zwift</button>
+        <button class="primary" id="btnPickKinomap">Kinomap</button>
+      </section>
+      <section class="pad">
+        <div class="hint">Výběr lze kdykoliv změnit v Menu.</div>
+      </section>
+    </main>
+
+    <!-- ROUTES LIST -->
+    <main class="screen" id="screenRoutes" data-screen="routes">
+      <section class="pad">
+        <button class="primary wide" id="btnCreateRoute">
+          <span class="plus">＋</span> Vytvořit Novou Trať
+        </button>
+      </section>
+
+      <section class="list" id="routesList"></section>
+
+      <section class="pad">
+        <button class="dark wide" id="btnHistoryAll">Historie & Žebříček</button>
+      </section>
+    </main>
+
+    <!-- ROUTE DETAIL -->
+    <main class="screen" id="screenRouteDetail" data-screen="route" hidden>
+      <section class="pad">
+        <div class="meta" id="routeMeta"></div>
+      </section>
+
+      <section class="card pad">
+        <div class="card-title">Profil tratě</div>
+        <canvas id="profileCanvas" width="1200" height="420" aria-label="Profil tratě"></canvas>
+        <div class="hint">Tip: import GPX ti vytvoří profil (výška vs vzdálenost). Checkpointy můžeš mít i bez vzdálenosti, ale pro značky v profilu se hodí.</div>
+      </section>
+
+      
+      <section class="pad">
+        <div class="card pad" id="compareCard">
+          <div class="row between">
+            <div class="card-title">Srovnání (TV režim)</div>
+            <div class="pill" id="compareMode">—</div>
+          </div>
+          <div class="compare-grid">
+            <div class="compare-box">
+              <div class="compare-title" id="cmpNextTitle">Další checkpoint</div>
+              <div class="compare-line" id="cmpNextBest">Best: —</div>
+              <div class="compare-line" id="cmpNextTarget">Cíl: —</div>
+            </div>
+            <div class="compare-box">
+              <div class="compare-title">Cíl</div>
+              <div class="compare-line" id="cmpFinishBest">Best: —</div>
+              <div class="compare-line" id="cmpFinishTarget">Cíl: —</div>
+            </div>
+          </div>
+          <div class="hint" id="cmpHint">Zobrazuje rozdíl na nejlepší časy a zároveň „živý“ cíl (další záznam v žebříčku, který ještě stíháš porazit).</div>
+        </div>
+      </section>
+
+
+
+      <section class="pad">
+        <div class="card pad" id="raceTrackCard">
+          <div class="row between">
+            <div class="card-title">Duel (TV vizualizace)</div>
+            <div class="pill" id="duelLabel">Best vs Ty</div>
+          </div>
+
+          <div class="track-wrap">
+            <div class="track" id="track">
+              <div class="track-line" id="trackLine"></div>
+              <div class="track-marks" id="trackMarks"></div>
+
+              <div class="rider rider-best" id="riderBest" title="Best">
+                <div class="rider-icon" aria-hidden="true">🚴</div>
+                <div class="rider-tag">BEST</div>
+              </div>
+
+              <div class="rider rider-you" id="riderYou" title="Ty">
+                <div class="rider-icon" aria-hidden="true">🚴</div>
+                <div class="rider-tag">TY</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="hint" id="duelHint">
+            V prvním úseku jedete spolu. Po každém checkpointu se pozice „skokově“ přepočítají podle rozdílu celkového času (mezera roste po 5 s).
+          </div>
+        </div>
+      </section>
+
+
+      <section class="card pad">
+        <div class="row between">
+          <div class="card-title">Checkpointy</div>
+          <button class="icon-btn" id="btnAddCheckpoint" aria-label="Přidat checkpoint">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div id="checkpointList" class="cp-list"></div>
+        <div class="hint">Za jízdy mačkej „Další checkpoint“ – bere checkpointy v pořadí.</div>
+      </section>
+
+      <section class="pad grid2">
+        <button class="dark" id="btnEditRoute">Upravit Trať</button>
+        <button class="dark" id="btnImportGpx">Import GPX</button>
+      </section>
+
+      <section class="pad">
+        <button class="primary wide" id="btnStartRide">Jet (měřit)</button>
+      </section>
+
+      <section class="pad">
+        <button class="ghost wide" id="btnRouteLeaderboard">Žebříček pro tuto trať</button>
+      </section>
+
+      <section class="pad">
+        <button class="ghost wide" id="btnSegmentLeaderboard">Žebříček checkpointů (segmenty)</button>
+      </section>
+    </main>
+
+    <!-- RIDE -->
+    <main class="screen" id="screenRide" data-screen="ride" hidden>
+      <section class="pad">
+        <div class="timer" id="rideTimer">00:00:00</div>
+      </section>
+
+      <section class="card pad">
+        <div class="row between">
+          <div class="card-title" id="rideRouteName">Jízda</div>
+          <div class="pill" id="rideNextLabel">Další: —</div>
+        </div>
+
+        <div class="ride-marks" id="rideMarks"></div>
+      </section>
+
+      <section class="pad grid2">
+        <button class="orange" id="btnUndo">Zpět</button>
+        <button class="green" id="btnNextCheckpoint">Další Checkpoint</button>
+      </section>
+
+      <section class="pad grid2">
+        <button class="red" id="btnStopRide">Ukončit</button>
+        <button class="blue" id="btnSaveRide" disabled>Uložit Výsledek</button>
+      </section>
+    </main>
+
+    <!-- BOTTOM SHEETS / MODALS -->
+
+    <div class="modal" id="modalSegmentLeaderboard" hidden>
+      <div class="sheet large">
+        <div class="sheet-title" id="segTitle">Žebříček checkpointů</div>
+        <div class="hint" id="segHint"></div>
+        <div id="segBody" class="seg-body"></div>
+        <div class="row gap">
+          <button class="ghost" data-close="modalSegmentLeaderboard">Zavřít</button>
+        </div>
+      </div>
+      <div class="backdrop" data-close="modalSegmentLeaderboard"></div>
+    </div>
+
+    <div class="modal" id="modalMenu" hidden>
+      <div class="sheet">
+        <div class="sheet-title">Menu</div>
+
+        <div class="hint" style="margin:-2px 0 10px 0">Aktuální zdroj: <b id="currentSourceLabel">—</b></div>
+        <button class="sheet-btn" id="btnSwitchSource">Změnit zdroj tras (Zwift/Kinomap)</button>
+
+        <button class="sheet-btn" id="btnExport">Exportovat data (JSON)</button>
+        <label class="sheet-btn file">
+          Importovat data (JSON)
+          <input type="file" id="fileImportJson" accept="application/json" />
+        </label>
+        <button class="sheet-btn danger" id="btnReset">Smazat všechna data</button>
+        <button class="sheet-btn" id="btnCloseMenu">Zavřít</button>
+      </div>
+      <div class="backdrop" data-close="modalMenu"></div>
+    </div>
+
+    <div class="modal" id="modalCreateRoute" hidden>
+      <div class="sheet">
+        <div class="sheet-title">Nová trať</div>
+        
+        <label class="field">
+          Zdroj
+          <select id="newRouteSource">
+            <option value="Zwift">Zwift</option>
+            <option value="Kinomap">Kinomap</option>
+          </select>
+        </label>
+
+        
+        <label class="field">
+          Zdroj
+          <select id="editRouteSource">
+            <option value="Zwift">Zwift</option>
+            <option value="Kinomap">Kinomap</option>
+          </select>
+        </label>
+
+        <label class="field">
+          Název tratě
+          <input type="text" id="newRouteName" placeholder="Např. Alpská Výzva" />
+        </label>
+        <label class="field">
+          Délka (km) — volitelné
+          <input type="number" inputmode="decimal" id="newRouteDistance" placeholder="25.6" />
+        </label>
+        <div class="row gap">
+          <button class="primary" id="btnCreateRouteConfirm">Vytvořit</button>
+          <button class="ghost" data-close="modalCreateRoute">Zrušit</button>
+        </div>
+      </div>
+      <div class="backdrop" data-close="modalCreateRoute"></div>
+    </div>
+
+    <div class="modal" id="modalAddCheckpoint" hidden>
+      <div class="sheet">
+        <div class="sheet-title">Nový checkpoint</div>
+        <label class="field">
+          Název checkpointu
+          <input type="text" id="cpName" placeholder="Vrchol / Sjezd / Zatáčka…" />
+        </label>
+        <label class="field">
+          Vzdálenost (km) — volitelné
+          <input type="number" inputmode="decimal" id="cpDistance" placeholder="12.8" />
+        </label>
+        <div class="row gap">
+          <button class="primary" id="btnAddCheckpointConfirm">Přidat</button>
+          <button class="ghost" data-close="modalAddCheckpoint">Zrušit</button>
+        </div>
+        <div class="hint">Vzdálenost pomůže zobrazit checkpoint v profilu. Klidně ji nech prázdnou.</div>
+      </div>
+      <div class="backdrop" data-close="modalAddCheckpoint"></div>
+    </div>
+
+    <div class="modal" id="modalImportGpx" hidden>
+      <div class="sheet">
+        <div class="sheet-title">Import GPX</div>
+        <p class="hint">Vyber GPX soubor trasy. Aplikace spočítá vzdálenost, převýšení a profil. (Soukromí: data zůstávají v telefonu.)</p>
+        <label class="sheet-btn file">
+          Vybrat GPX
+          <input type="file" id="fileGpx" accept=".gpx,application/gpx+xml,application/xml,text/xml" />
+        </label>
+        <div class="row gap">
+          <button class="ghost" data-close="modalImportGpx">Zavřít</button>
+        </div>
+      </div>
+      <div class="backdrop" data-close="modalImportGpx"></div>
+    </div>
+
+    <div class="modal" id="modalEditRoute" hidden>
+      <div class="sheet">
+        <div class="sheet-title">Upravit trať</div>
+        <label class="field">
+          Název
+          <input type="text" id="editRouteName" />
+        </label>
+        <label class="field">
+          Délka (km) — volitelné
+          <input type="number" inputmode="decimal" id="editRouteDistance" />
+        </label>
+        <div class="row gap">
+          <button class="primary" id="btnEditRouteSave">Uložit</button>
+          <button class="ghost" data-close="modalEditRoute">Zrušit</button>
+        </div>
+        <hr class="sep"/>
+        <button class="sheet-btn danger" id="btnDeleteRoute">Smazat trať</button>
+      </div>
+      <div class="backdrop" data-close="modalEditRoute"></div>
+    </div>
+
+    <div class="modal" id="modalSaveRide" hidden>
+      <div class="sheet">
+        <div class="sheet-title">Uložit výsledek</div>
+        <div class="mini" id="saveRideSummary"></div>
+        <label class="field">
+          Závodník / název pokusu (volitelné)
+          <input type="text" id="rideRunnerName" placeholder="Např. Pokus #3 / FTP / Race" />
+        </label>
+        <label class="field">
+          Poznámka (volitelné)
+          <textarea id="rideNote" rows="3" placeholder="Např. odpor 5/10, pocit, tep…"></textarea>
+        </label>
+        <div class="row gap">
+          <button class="primary" id="btnSaveRideConfirm">Uložit</button>
+          <button class="ghost" data-close="modalSaveRide">Zrušit</button>
+        </div>
+      </div>
+      <div class="backdrop" data-close="modalSaveRide"></div>
+    </div>
+
+    <div class="modal" id="modalLeaderboard" hidden>
+      <div class="sheet large">
+        <div class="sheet-title" id="leaderTitle">Žebříček</div>
+        <div class="hint" id="leaderHint"></div>
+        <div id="leaderList" class="leader-list"></div>
+        <div class="row gap">
+          <button class="ghost" data-close="modalLeaderboard">Zavřít</button>
+        </div>
+      </div>
+      <div class="backdrop" data-close="modalLeaderboard"></div>
+    </div>
+
+    <div id="toast" class="toast" hidden></div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+    }
+  </script>
+</body>
+</html>
